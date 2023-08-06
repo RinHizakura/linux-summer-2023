@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import os
 
 def bench(algo, n, pat):
-    binary = 'treeint.out'
+    binary = 'build/bst'
 
     times = os.popen(f"taskset -c 1 ./{binary} {algo} {n}").read()
     # strip out the '\n'

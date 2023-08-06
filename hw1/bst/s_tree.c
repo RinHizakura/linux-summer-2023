@@ -32,9 +32,10 @@
  * these update operations.
  */
 #include "s_tree.h"
+#include <assert.h>
 #include <stdlib.h>
 
-enum st_dir { LEFT, RIGHT };
+enum st_dir { LEFT, RIGHT, NONE };
 
 struct st_tree *st_create(cmp_t *cmp,
                           struct st_node *(*create_node)(),
@@ -228,15 +229,16 @@ static void __st_insert(struct st_node **root,
 int st_insert(struct st_tree *tree, void *key)
 {
     struct st_node *p = NULL;
-    enum st_dir d;
+    enum st_dir d = NONE;
     struct st_node *n = __st_find(tree, key, &p, &d);
     if (n != NULL)
         return -1;
 
     n = tree->create_node(key);
-    if (st_root(tree))
+    if (st_root(tree)) {
+        assert(d != NONE);
         __st_insert(&st_root(tree), p, n, d);
-    else
+    } else
         st_root(tree) = n;
 
     return 0;
