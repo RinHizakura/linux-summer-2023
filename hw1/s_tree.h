@@ -19,24 +19,21 @@ struct st_node {
     struct st_node *left, *right;
 };
 
-typedef int cmp_t(const void *, const void *);
+typedef int cmp_t(struct st_node *node, void *key);
 struct st_tree {
     struct st_node *root;
     cmp_t *cmp;
-    struct st_node *(*create_node)();
+    struct st_node *(*create_node)(void *key);
     void (*destroy_node)(struct st_node *n);
 };
 
 enum st_dir { LEFT, RIGHT };
 
 struct st_tree *st_create(cmp_t *cmp,
-                          struct st_node *(*create_node)(),
+                          struct st_node *(*create_node)(void *key),
                           void (*destroy_node)(struct st_node *n));
 void st_destroy(struct st_tree *tree);
-void st_insert(struct st_node **root,
-               struct st_node *p,
-               struct st_node *n,
-               enum st_dir d);
+void st_insert(struct st_tree *tree, void *key);
 void st_remove(struct st_node **root, struct st_node *del);
 
 #endif

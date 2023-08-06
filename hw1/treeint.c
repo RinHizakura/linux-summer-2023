@@ -17,15 +17,23 @@ struct treeint {
 
 static struct st_tree *tree;
 
-static int treeint_cmp(const void *a, const void *b)
+static int treeint_cmp(struct st_node *node, void *key)
 {
-    return *(int *) a - *(int *) b;
+    struct treeint *n = container_of(node, struct treeint, st_n);
+    int value = *(int *) key;
+
+    return n->value - value;
 }
 
-static struct st_node *treeint_node_create()
+static struct st_node *treeint_node_create(void *key)
 {
-    // TODO
-    return NULL;
+    int value = *(int *) key;
+    struct treeint *i = calloc(sizeof(struct treeint), 1);
+    assert(i);
+
+    i->value = value;
+    // return the st_node reference of the new node
+    return &i->st_n;
 }
 
 static void treeint_node_destroy(struct st_node *n)
@@ -48,34 +56,9 @@ int treeint_destroy()
     return 0;
 }
 
-struct treeint *treeint_insert(int a)
+void treeint_insert(int a)
 {
-    struct st_node *p = NULL;
-    enum st_dir d;
-    for (struct st_node *n = st_root(tree); n;) {
-        struct treeint *t = container_of(n, struct treeint, st_n);
-        if (a == t->value)
-            return t;
-
-        p = n;
-
-        if (a < t->value) {
-            n = st_left(n);
-            d = LEFT;
-        } else if (a > t->value) {
-            n = st_right(n);
-            d = RIGHT;
-        }
-    }
-
-    struct treeint *i = calloc(sizeof(struct treeint), 1);
-    if (st_root(tree))
-        st_insert(&st_root(tree), p, &i->st_n, d);
-    else
-        st_root(tree) = &i->st_n;
-
-    i->value = a;
-    return i;
+    st_insert(tree, (void *) &a);
 }
 
 struct treeint *treeint_find(int a)

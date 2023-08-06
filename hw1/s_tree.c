@@ -176,10 +176,10 @@ static inline void st_update(struct st_node **root, struct st_node *n)
  * BST insertion techniques, an update operation is invoked on the newly
  * inserted node.
  */
-void st_insert(struct st_node **root,
-               struct st_node *p,
-               struct st_node *n,
-               enum st_dir d)
+static void __st_insert(struct st_node **root,
+                        struct st_node *p,
+                        struct st_node *n,
+                        enum st_dir d)
 {
     if (d == LEFT)
         st_left(p) = n;
@@ -188,6 +188,33 @@ void st_insert(struct st_node **root,
 
     st_parent(n) = p;
     st_update(root, n);
+}
+
+void st_insert(struct st_tree *tree, void *key)
+{
+    struct st_node *p = NULL;
+    enum st_dir d;
+    for (struct st_node *n = st_root(tree); n;) {
+        int cmp = tree->cmp(n, key);
+        if (cmp == 0)
+            return;
+
+        p = n;
+
+        if (cmp > 0) {
+            n = st_left(n);
+            d = LEFT;
+        } else if (cmp < 0) {
+            n = st_right(n);
+            d = RIGHT;
+        }
+    }
+
+    struct st_node *n = tree->create_node(key);
+    if (st_root(tree))
+        __st_insert(&st_root(tree), p, n, d);
+    else
+        st_root(tree) = n;
 }
 
 static inline void st_replace_right(struct st_node *n, struct st_node *r)
