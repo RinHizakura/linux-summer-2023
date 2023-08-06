@@ -33,5 +33,6 @@ struct st_tree *st_create(cmp_t *cmp,
 void st_destroy(struct st_tree *tree);
 int st_insert(struct st_tree *tree, void *key);
 int st_remove(struct st_tree *tree, void *key);
+struct st_node *st_find(struct st_tree *tree, void *key);
 
 #endif

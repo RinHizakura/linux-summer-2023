@@ -173,10 +173,10 @@ static inline void st_update(struct st_node **root, struct st_node *n)
         st_update(root, p);
 }
 
-static struct st_node *st_find(struct st_tree *tree,
-                               void *key,
-                               struct st_node **p,
-                               enum st_dir *d)
+static struct st_node *__st_find(struct st_tree *tree,
+                                 void *key,
+                                 struct st_node **p,
+                                 enum st_dir *d)
 {
     struct st_node *dummy_p;
     enum st_dir dummy_d;
@@ -229,7 +229,7 @@ int st_insert(struct st_tree *tree, void *key)
 {
     struct st_node *p = NULL;
     enum st_dir d;
-    struct st_node *n = st_find(tree, key, &p, &d);
+    struct st_node *n = __st_find(tree, key, &p, &d);
     if (n != NULL)
         return -1;
 
@@ -356,10 +356,14 @@ static void __st_remove(struct st_node **root, struct st_node *del)
     st_update(root, parent);  // EEEE
 }
 
+struct st_node *st_find(struct st_tree *tree, void *key)
+{
+    return __st_find(tree, key, NULL, NULL);
+}
 
 int st_remove(struct st_tree *tree, void *key)
 {
-    struct st_node *n = st_find(tree, key, NULL, NULL);
+    struct st_node *n = st_find(tree, key);
     if (!n)
         return -1;
 
