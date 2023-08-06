@@ -27,13 +27,11 @@ struct st_tree {
     void (*destroy_node)(struct st_node *n);
 };
 
-enum st_dir { LEFT, RIGHT };
-
 struct st_tree *st_create(cmp_t *cmp,
                           struct st_node *(*create_node)(void *key),
                           void (*destroy_node)(struct st_node *n));
 void st_destroy(struct st_tree *tree);
-void st_insert(struct st_tree *tree, void *key);
-void st_remove(struct st_node **root, struct st_node *del);
+int st_insert(struct st_tree *tree, void *key);
+int st_remove(struct st_tree *tree, void *key);
 
 #endif

@@ -34,6 +34,8 @@
 #include "s_tree.h"
 #include <stdlib.h>
 
+enum st_dir { LEFT, RIGHT };
+
 struct st_tree *st_create(cmp_t *cmp,
                           struct st_node *(*create_node)(),
                           void (*destroy_node)(struct st_node *n))
@@ -171,6 +173,39 @@ static inline void st_update(struct st_node **root, struct st_node *n)
         st_update(root, p);
 }
 
+static struct st_node *st_find(struct st_tree *tree,
+                               void *key,
+                               struct st_node **p,
+                               enum st_dir *d)
+{
+    struct st_node *dummy_p;
+    enum st_dir dummy_d;
+    /* Reference to a dummy instance, so we avoid to
+     * acccess NULL pointer. */
+    if (!d)
+        d = &dummy_d;
+    if (!p)
+        p = &dummy_p;
+
+    for (struct st_node *n = st_root(tree); n;) {
+        int cmp = tree->cmp(n, key);
+        if (cmp == 0)
+            return n;
+
+        *p = n;
+
+        if (cmp > 0) {
+            n = st_left(n);
+            *d = LEFT;
+        } else if (cmp < 0) {
+            n = st_right(n);
+            *d = RIGHT;
+        }
+    }
+
+    return NULL;
+}
+
 /* The process of insertion is straightforward and follows the standard approach
  * used in any BST. After inserting a new node into the tree using conventional
  * BST insertion techniques, an update operation is invoked on the newly
@@ -190,31 +225,21 @@ static void __st_insert(struct st_node **root,
     st_update(root, n);
 }
 
-void st_insert(struct st_tree *tree, void *key)
+int st_insert(struct st_tree *tree, void *key)
 {
     struct st_node *p = NULL;
     enum st_dir d;
-    for (struct st_node *n = st_root(tree); n;) {
-        int cmp = tree->cmp(n, key);
-        if (cmp == 0)
-            return;
+    struct st_node *n = st_find(tree, key, &p, &d);
+    if (n != NULL)
+        return -1;
 
-        p = n;
-
-        if (cmp > 0) {
-            n = st_left(n);
-            d = LEFT;
-        } else if (cmp < 0) {
-            n = st_right(n);
-            d = RIGHT;
-        }
-    }
-
-    struct st_node *n = tree->create_node(key);
+    n = tree->create_node(key);
     if (st_root(tree))
         __st_insert(&st_root(tree), p, n, d);
     else
         st_root(tree) = n;
+
+    return 0;
 }
 
 static inline void st_replace_right(struct st_node *n, struct st_node *r)
@@ -293,7 +318,7 @@ static inline void st_replace_left(struct st_node *n, struct st_node *l)
  * right), it can be directly removed from the tree, and an update operation is
  * invoked on the parent node of the deleted node.
  */
-void st_remove(struct st_node **root, struct st_node *del)
+static void __st_remove(struct st_node **root, struct st_node *del)
 {
     if (st_right(del)) {
         struct st_node *least = st_first(st_right(del));
@@ -329,4 +354,17 @@ void st_remove(struct st_node **root, struct st_node *del)
         st_right(parent) = 0;
 
     st_update(root, parent);  // EEEE
+}
+
+
+int st_remove(struct st_tree *tree, void *key)
+{
+    struct st_node *n = st_find(tree, key, NULL, NULL);
+    if (!n)
+        return -1;
+
+    __st_remove(&st_root(tree), n);
+    tree->destroy_node(n);
+
+    return 0;
 }

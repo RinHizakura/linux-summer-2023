@@ -56,37 +56,14 @@ int treeint_destroy()
     return 0;
 }
 
-void treeint_insert(int a)
+int treeint_insert(int a)
 {
-    st_insert(tree, (void *) &a);
-}
-
-struct treeint *treeint_find(int a)
-{
-    struct st_node *n = st_root(tree);
-    while (n) {
-        struct treeint *t = treeint_entry(n);
-        if (a == t->value)
-            return t;
-
-        if (a < t->value)
-            n = st_left(n);
-        else if (a > t->value)
-            n = st_right(n);
-    }
-
-    return 0;
+    return st_insert(tree, (void *) &a);
 }
 
 int treeint_remove(int a)
 {
-    struct treeint *n = treeint_find(a);
-    if (!n)
-        return -1;
-
-    st_remove(&st_root(tree), &n->st_n);
-    free(n);
-    return 0;
+    return st_remove(tree, (void *) &a);
 }
 
 /* ascending order */
