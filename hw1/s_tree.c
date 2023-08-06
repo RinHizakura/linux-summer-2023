@@ -31,30 +31,39 @@
  * update, modifications are made to the node's parent, as it existed before
  * these update operations.
  */
+#include "s_tree.h"
+#include <stdlib.h>
 
-/* S-Tree uses hints to decide whether to perform a balancing operation or not.
- * Hints are similar to AVL-trees' height property, but they are not
- * required to be absolutely accurate. A hint provides an approximation
- * of the longest chain of nodes under the node to which the hint is attached.
- */
-struct st_node {
-    short hint;
-    struct st_node *parent;
-    struct st_node *left, *right;
-};
+struct st_tree *st_create(cmp_t *cmp,
+                          struct st_node *(*create_node)(),
+                          void (*destroy_node)(struct st_node *n))
+{
+    struct st_tree *tree = calloc(sizeof(struct st_tree), 1);
+    tree->root = NULL;
+    tree->cmp = cmp;
+    tree->create_node = create_node;
+    tree->destroy_node = destroy_node;
+    return tree;
+}
 
-struct st_root {
-    struct st_node *root;
-};
+static void __st_destroy(struct st_tree *tree, struct st_node *n)
+{
+    if (st_left(n))
+        __st_destroy(tree, st_left(n));
 
-enum st_dir { LEFT, RIGHT };
+    if (st_right(n))
+        __st_destroy(tree, st_right(n));
 
-#define st_root(r) (r->root)
-#define st_left(n) (n->left)
-#define st_right(n) (n->right)
-#define st_rparent(n) (st_right(n)->parent)
-#define st_lparent(n) (st_left(n)->parent)
-#define st_parent(n) (n->parent)
+    tree->destroy_node(n);
+}
+
+void st_destroy(struct st_tree *tree)
+{
+    if (st_root(tree))
+        __st_destroy(tree, st_root(tree));
+
+    free(tree);
+}
 
 struct st_node *st_first(struct st_node *n)
 {
@@ -293,160 +302,4 @@ void st_remove(struct st_node **root, struct st_node *del)
         st_right(parent) = 0;
 
     st_update(root, parent);  // EEEE
-}
-
-/* Test program */
-
-#include <assert.h>
-#include <stddef.h> /* offsetof */
-#include <stdio.h>
-#include <stdlib.h>
-#include <time.h>
-
-#define container_of(ptr, type, member) \
-    ((type *) ((char *) (ptr) - (offsetof(type, member))))
-
-#define treeint_entry(ptr) container_of(ptr, struct treeint, st_n)
-
-struct treeint {
-    int value;
-    struct st_node st_n;
-};
-
-static struct st_root *tree;
-
-int treeint_init()
-{
-    tree = calloc(sizeof(struct st_root), 1);
-    assert(tree);
-    return 0;
-}
-
-static void __treeint_destroy(struct st_node *n)
-{
-    if (st_left(n))
-        __treeint_destroy(st_left(n));
-
-    if (st_right(n))
-        __treeint_destroy(st_right(n));
-
-    struct treeint *i = treeint_entry(n);
-    free(i);
-}
-
-int treeint_destroy()
-{
-    assert(tree);
-    if (st_root(tree))
-        __treeint_destroy(st_root(tree));
-
-    free(tree);
-    return 0;
-}
-
-struct treeint *treeint_insert(int a)
-{
-    struct st_node *p = NULL;
-    enum st_dir d;
-    for (struct st_node *n = st_root(tree); n;) {
-        struct treeint *t = container_of(n, struct treeint, st_n);
-        if (a == t->value)
-            return t;
-
-        p = n;
-
-        if (a < t->value) {
-            n = st_left(n);
-            d = LEFT;
-        } else if (a > t->value) {
-            n = st_right(n);
-            d = RIGHT;
-        }
-    }
-
-    struct treeint *i = calloc(sizeof(struct treeint), 1);
-    if (st_root(tree))
-        st_insert(&st_root(tree), p, &i->st_n, d);
-    else
-        st_root(tree) = &i->st_n;
-
-    i->value = a;
-    return i;
-}
-
-struct treeint *treeint_find(int a)
-{
-    struct st_node *n = st_root(tree);
-    while (n) {
-        struct treeint *t = treeint_entry(n);
-        if (a == t->value)
-            return t;
-
-        if (a < t->value)
-            n = st_left(n);
-        else if (a > t->value)
-            n = st_right(n);
-    }
-
-    return 0;
-}
-
-int treeint_remove(int a)
-{
-    struct treeint *n = treeint_find(a);
-    if (!n)
-        return -1;
-
-    st_remove(&st_root(tree), &n->st_n);
-    free(n);
-    return 0;
-}
-
-/* ascending order */
-static void __treeint_dump(struct st_node *n, int depth)
-{
-    if (!n)
-        return;
-
-    __treeint_dump(st_left(n), depth + 1);  // FFFF
-
-    struct treeint *v = treeint_entry(n);
-    printf("%d\n", v->value);
-
-    __treeint_dump(st_right(n), depth + 1);  // GGGG
-}
-
-void treeint_dump()
-{
-    __treeint_dump(st_root(tree), 0);
-}
-
-int main()
-{
-    srand(time(0));
-
-    treeint_init();
-
-    for (int i = 0; i < 100; ++i)
-        treeint_insert(rand() % 99);
-
-    printf("[ After insertions ]\n");
-    treeint_dump();
-
-    printf("Removing...\n");
-    for (int i = 0; i < 100; ++i) {
-        int v = rand() % 99;
-        printf("%2d  ", v);
-        if ((i + 1) % 10 == 0)
-            printf("\n");
-        treeint_remove(v);
-    }
-    printf("\n");
-
-    printf("[ After removals ]\n");
-    treeint_dump();
-
-    treeint_destroy();
-
-    return 0;
 }
