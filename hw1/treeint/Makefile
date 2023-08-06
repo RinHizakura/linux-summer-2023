@@ -1,8 +1,8 @@
-CFLAGS=-O2 -Wall -Wextra
+CFLAGS=-O2 -Wall -Wextra -MMD
 LDFLAGS=
 
 OUT ?= build
-BINARY = $(OUT)/bst
+BINARY = $(OUT)/treeint
 
 CSRCS = $(shell find . -name '*.c')
 _COBJ =  $(notdir $(CSRCS))
@@ -23,3 +23,5 @@ $(BINARY): $(COBJS)
 
 $(OUT)/%.o: %.c
 	@$(CC) -c $(CFLAGS) $< -o $@
+
+-include $(OUT)/*.d

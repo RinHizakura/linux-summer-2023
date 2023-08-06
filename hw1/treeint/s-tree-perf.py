@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import os
 
 def bench(algo, n, pat):
-    binary = 'build/bst'
+    binary = 'build/treeint'
 
     times = os.popen(f"taskset -c 1 ./{binary} {algo} {n}").read()
     # strip out the '\n'
@@ -20,7 +20,7 @@ os.system("make")
 # 0: insert, 1: find, 2: remove
 pat = 0
 
-algo_list=["baseline"]
+algo_list=["s-tree"]
 nsize = list(int(2**k) for k in range(7, 20))
 ts = [[bench(algo, size, pat) for size in nsize] for algo in algo_list]
 
