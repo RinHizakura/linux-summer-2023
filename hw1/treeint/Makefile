@@ -15,6 +15,12 @@ clean:
 	$(RM) $(COBJS)
 	$(RM) $(BINARY)
 
+test-stree: $(BINARY)
+	$(BINARY) s-tree 100
+
+test-rbtree: $(BINARY)
+	$(BINARY) rbtree 100
+
 %.o: %.c
 	@$(CC) -c $(CFLAGS) $< -o $@
 

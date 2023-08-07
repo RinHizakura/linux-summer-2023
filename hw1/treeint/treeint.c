@@ -4,6 +4,7 @@
 #include <string.h>
 #include <time.h>
 #include "treeint_st.h"
+#include "treeint_rb.h"
 
 struct treeint_ops {
     void *(*init)();
@@ -23,6 +24,15 @@ static struct treeint_ops st_ops = {
     .find = treeint_st_find,
     .remove = treeint_st_remove,
     .dump = treeint_st_dump,
+};
+
+static struct treeint_ops rbtree_ops = {
+    .init = treeint_rbtree_init,
+    .destroy = treeint_rbtree_destroy,
+    .insert = treeint_rbtree_insert,
+    .find = treeint_rbtree_find,
+    .remove = treeint_rbtree_remove,
+    .dump = treeint_rbtree_dump,
 };
 
 #define rand_key(sz) rand() % ((sz) -1)
@@ -47,6 +57,8 @@ int main(int argc, char *argv[])
 
     if (strcmp(argv[1], "s-tree") == 0) {
         ops = &st_ops;
+    } else if (strcmp(argv[1], "rbtree") == 0) {
+        ops = &rbtree_ops;
     } else {
         printf("Invalid algorithm %s\n", argv[1]);
         return -2;

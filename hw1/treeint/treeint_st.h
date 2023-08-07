@@ -63,7 +63,8 @@ static int treeint_st_insert(void *ctx, int a)
 static void *treeint_st_find(void *ctx, int a)
 {
     struct st_tree *tree = (struct st_tree *) ctx;
-    return st_find(tree, (void *) &a);
+    struct st_node *n = st_find(tree, (void *) &a);
+    return n ? treeint_st_entry(n) : NULL;
 }
 
 static int treeint_st_remove(void *ctx, int a)
