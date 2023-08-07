@@ -4,7 +4,8 @@
 #include "common.h"
 #include "rbtree.h"
 
-#define treeint_rbtree_entry(ptr) container_of(ptr, struct treeint_rbtree, rbtree_n)
+#define treeint_rbtree_entry(ptr) \
+    container_of(ptr, struct treeint_rbtree, rbtree_n)
 
 struct treeint_rbtree {
     int value;
@@ -19,22 +20,37 @@ static void *treeint_rbtree_init()
     return root;
 }
 
+static void __treeint_rbtree_destroy(struct rb_node *n)
+{
+    if (rb_left(n))
+        __treeint_rbtree_destroy(rb_left(n));
+
+    if (rb_right(n))
+        __treeint_rbtree_destroy(rb_right(n));
+
+    struct treeint_rbtree *entry = treeint_rbtree_entry(n);
+    free(entry);
+}
+
 static int treeint_rbtree_destroy(void *ctx)
 {
-    todo();
+    struct rb_root *root = (struct rb_root *) ctx;
+    if (rb_root(root))
+        __treeint_rbtree_destroy(rb_root(root));
+
+    free(root);
     return 0;
 }
 
 static struct treeint_rbtree *__treeint_rbtree_insert(void *ctx, int a)
 {
-    struct rb_root *root = (struct rb_root *)ctx;
+    struct rb_root *root = (struct rb_root *) ctx;
 
     struct rb_node **n = &rb_root(root);
     struct rb_node *p = NULL;
     struct treeint_rbtree *entry;
 
-    while (*n)
-    {
+    while (*n) {
         p = *n;
         entry = treeint_rbtree_entry(p);
         if (a == entry->value)
@@ -56,22 +72,21 @@ static struct treeint_rbtree *__treeint_rbtree_insert(void *ctx, int a)
 static int treeint_rbtree_insert(void *ctx, int a)
 {
     struct treeint_rbtree *node = __treeint_rbtree_insert(ctx, a);
-    if(node == NULL)
-         return -1;
+    if (node == NULL)
+        return -1;
 
-    struct rb_root *root = (struct rb_root *)ctx;
+    struct rb_root *root = (struct rb_root *) ctx;
     rb_insert_color(&node->rbtree_n, root);
     return 0;
 }
 
 static void *treeint_rbtree_find(void *ctx, int a)
 {
-    struct rb_root *root = (struct rb_root *)ctx;
+    struct rb_root *root = (struct rb_root *) ctx;
     struct rb_node *n = rb_root(root);
     struct treeint_rbtree *entry;
 
-    while (n)
-    {
+    while (n) {
         entry = treeint_rbtree_entry(n);
         if (a == entry->value)
             return entry;
@@ -87,7 +102,14 @@ static void *treeint_rbtree_find(void *ctx, int a)
 
 static int treeint_rbtree_remove(void *ctx, int a)
 {
-    todo();
+    struct rb_root *root = (struct rb_root *) ctx;
+    struct treeint_rbtree *entry = treeint_rbtree_find(ctx, a);
+
+    if (!entry)
+        return -1;
+
+    rb_erase(&entry->rbtree_n, root);
+    free(entry);
     return 0;
 }
 
@@ -106,9 +128,8 @@ static void __treeint_rbtree_dump(struct rb_node *n, int depth)
 
 static void treeint_rbtree_dump(void *ctx)
 {
-    struct rb_root *root = (struct rb_root *)ctx;
+    struct rb_root *root = (struct rb_root *) ctx;
     __treeint_rbtree_dump(rb_root(root), 0);
 }
-
 
 #endif
