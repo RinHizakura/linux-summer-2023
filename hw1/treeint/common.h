@@ -1,9 +1,9 @@
 #ifndef COMMON_H
 #define COMMON_H
 
-#include <stdlib.h>
-#include <stdio.h>
 #include <stddef.h> /* offsetof */
+#include <stdio.h>
+#include <stdlib.h>
 
 #define container_of(ptr, type, member) \
     ((type *) ((char *) (ptr) - (offsetof(type, member))))
@@ -16,7 +16,7 @@ static inline int throw_err(const char *str)
 
 #define todo() throw_err("Function not done yet :(")
 
-#define PRINT_DEBUG
+//#define PRINT_DEBUG
 #ifdef PRINT_DEBUG
 #define pr_debug(...) fprintf(stderr, __VA_ARGS__)
 #else
