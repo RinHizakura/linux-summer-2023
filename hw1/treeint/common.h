@@ -28,5 +28,5 @@ static inline int throw_err(const char *str)
 #endif
 
 #define unlikely(x) __builtin_expect(!!(x), 0)
-
+#define __unused __attribute__((unused))
 #endif

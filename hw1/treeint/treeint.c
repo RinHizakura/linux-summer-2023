@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include "common.h"
 #include "treeint_rb.h"
 #include "treeint_st.h"
 
@@ -27,12 +28,12 @@ static struct treeint_ops st_ops = {
 };
 
 static struct treeint_ops rbtree_ops = {
-    .init = treeint_rbtree_init,
-    .destroy = treeint_rbtree_destroy,
-    .insert = treeint_rbtree_insert,
-    .find = treeint_rbtree_find,
-    .remove = treeint_rbtree_remove,
-    .dump = treeint_rbtree_dump,
+    .init = treeint_rb_init,
+    .destroy = treeint_rb_destroy,
+    .insert = treeint_rb_insert,
+    .find = treeint_rb_find,
+    .remove = treeint_rb_remove,
+    .dump = treeint_rb_dump,
 };
 
 #define rand_key(sz) rand() % ((sz) -1)

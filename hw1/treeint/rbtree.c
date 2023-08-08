@@ -212,11 +212,18 @@ static void __rb_insert(struct rb_node *node,
 }
 
 
-static inline void dummy_propagate(struct rb_node *node, struct rb_node *stop)
+static inline void dummy_propagate(__unused struct rb_node *node,
+                                   __unused struct rb_node *stop)
 {
 }
-static inline void dummy_copy(struct rb_node *old, struct rb_node *new) {}
-static inline void dummy_rotate(struct rb_node *old, struct rb_node *new) {}
+static inline void dummy_copy(__unused struct rb_node *old,
+                              __unused struct rb_node *new)
+{
+}
+static inline void dummy_rotate(__unused struct rb_node *old,
+                                __unused struct rb_node *new)
+{
+}
 
 struct rb_augment_callbacks {
     void (*propagate)(struct rb_node *node, struct rb_node *stop);
