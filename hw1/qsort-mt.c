@@ -209,8 +209,8 @@ static struct qsort *allocate_thread(struct common *c)
     for (int i = 0; i < c->nthreads; i++)
         if (c->pool[i].st == ts_idle) {
             c->idlethreads--;
-            c->pool[i].st = ts_work;
             verify(pthread_mutex_lock(&c->pool[i].mtx_st));
+            c->pool[i].st = ts_work;
             verify(pthread_mutex_unlock(&c->mtx_al));
             return (&c->pool[i]);
         }

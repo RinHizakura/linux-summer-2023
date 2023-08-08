@@ -7,8 +7,7 @@ ifeq ("$(ASAN)","1")
 endif
 
 ifeq ("$(TSAN)", "1")
-    CFLAGS += -fsanitize=thread
-    LDFLAGS += -fsanitize=thread
+    FLAGS += -g -fsanitize=thread
 endif
 
 all: $(OUT)
