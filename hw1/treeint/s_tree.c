@@ -179,14 +179,7 @@ static struct st_node *__st_find(struct st_tree *tree,
                                  struct st_node **p,
                                  enum st_dir *d)
 {
-    struct st_node *dummy_p;
-    enum st_dir dummy_d;
-    /* Reference to a dummy instance, so we avoid to
-     * acccess NULL pointer. */
-    if (!d)
-        d = &dummy_d;
-    if (!p)
-        p = &dummy_p;
+    assert(p && d);
 
     for (struct st_node *n = st_root(tree); n;) {
         int cmp = tree->cmp(n, key);
@@ -201,6 +194,23 @@ static struct st_node *__st_find(struct st_tree *tree,
         } else if (cmp < 0) {
             n = st_right(n);
             *d = RIGHT;
+        }
+    }
+
+    return NULL;
+}
+
+static struct st_node *__st_find2(struct st_tree *tree, void *key)
+{
+    for (struct st_node *n = st_root(tree); n;) {
+        int cmp = tree->cmp(n, key);
+        if (cmp == 0)
+            return n;
+
+        if (cmp > 0) {
+            n = st_left(n);
+        } else if (cmp < 0) {
+            n = st_right(n);
         }
     }
 
@@ -360,7 +370,7 @@ static void __st_remove(struct st_node **root, struct st_node *del)
 
 struct st_node *st_find(struct st_tree *tree, void *key)
 {
-    return __st_find(tree, key, NULL, NULL);
+    return __st_find2(tree, key);
 }
 
 int st_remove(struct st_tree *tree, void *key)
