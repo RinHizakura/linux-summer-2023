@@ -424,9 +424,9 @@ int main(int argc, char *argv[])
     size_t nelem = 10000000;
     int threads = 2;
     int forkelements = 100;
-    ELEM_T *int_elem;
+    ELEM_T *int_elem = NULL;
     char *ep;
-    char **str_elem;
+    char **str_elem = NULL;
     struct timeval start, end;
     struct rusage ru;
 
@@ -521,5 +521,7 @@ int main(int argc, char *argv[])
             (end.tv_sec - start.tv_sec) + (end.tv_usec - start.tv_usec) / 1e6,
             ru.ru_utime.tv_sec + ru.ru_utime.tv_usec / 1e6,
             ru.ru_stime.tv_sec + ru.ru_stime.tv_usec / 1e6);
+    free(int_elem);
+    free(str_elem);
     return (0);
 }
