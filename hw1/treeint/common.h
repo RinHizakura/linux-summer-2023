@@ -16,11 +16,10 @@ static inline int throw_err(const char *str)
 
 #define todo() throw_err("Function not done yet :(")
 
-//#define PRINT_DEBUG
 #ifdef PRINT_DEBUG
-#define pr_debug(...)                \
-    do {                             \
-        fprintf(stderr, __VA_ARGS__) \
+#define pr_debug(...)                 \
+    do {                              \
+        fprintf(stderr, __VA_ARGS__); \
     } while (0)
 #else
 #define pr_debug(...) \

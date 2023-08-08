@@ -12,7 +12,7 @@ struct treeint_ops {
     int (*insert)(void *, int);
     void *(*find)(void *, int);
     int (*remove)(void *, int);
-    void (*dump)(void *ctx);
+    void (*dump)(void *ctx, enum dump_mode);
 };
 
 static struct treeint_ops *ops;
@@ -91,7 +91,7 @@ int main(int argc, char *argv[])
     printf("\n");
 
     pr_debug("[ After insertions ]\n");
-    ops->dump(ctx);
+    ops->dump(ctx, LEVEL_ORDER);
 
     for (size_t i = 0; i < tree_size; ++i) {
         int v = seed ? rand_key(tree_size) : i;
@@ -109,7 +109,7 @@ int main(int argc, char *argv[])
     printf("\n");
 
     pr_debug("[ After removals ]\n");
-    ops->dump(ctx);
+    ops->dump(ctx, LEVEL_ORDER);
 
     ops->destroy(ctx);
 

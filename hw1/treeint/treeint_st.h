@@ -3,6 +3,7 @@
 
 #include "common.h"
 #include "s_tree.h"
+#include "treeint_common.h"
 
 #define treeint_st_entry(ptr) container_of(ptr, struct treeint_st, st_n)
 
@@ -73,23 +74,64 @@ static int treeint_st_remove(void *ctx, int a)
     return st_remove(tree, (void *) &a);
 }
 
-static void __treeint_st_dump(struct st_node *n, int depth)
+static void treeint_st_dump_preorder(struct st_node *n)
 {
     if (!n)
         return;
 
-    __treeint_st_dump(st_left(n), depth + 1);  // FFFF
+    treeint_st_dump_preorder(st_left(n));
 
     struct treeint_st *v = treeint_st_entry(n);
     pr_debug("%d\n", v->value);
 
-    __treeint_st_dump(st_right(n), depth + 1);  // GGGG
+    treeint_st_dump_preorder(st_right(n));
 }
 
-static void treeint_st_dump(void *ctx)
+static int treeint_st_height(struct st_node *node)
+{
+    if (node == NULL)
+        return 0;
+
+    int lheight = treeint_st_height(st_left(node));
+    int rheight = treeint_st_height(st_right(node));
+
+    return (lheight > rheight) ? (lheight + 1) : (rheight + 1);
+}
+
+static void __treeint_st_dump_lvorder(struct st_node *node, int level)
+{
+    if (node == NULL) {
+        pr_debug("NULL,");
+        return;
+    }
+
+    struct treeint_st *v = treeint_st_entry(node);
+    if (level == 1) {
+        pr_debug("%d,", v->value);
+        return;
+    }
+
+    __treeint_st_dump_lvorder(st_left(node), level - 1);
+    __treeint_st_dump_lvorder(st_right(node), level - 1);
+}
+
+static void treeint_st_dump_lvorder(struct st_node *root)
+{
+    int h = treeint_st_height(root);
+    for (int i = 1; i <= h; i++)
+        __treeint_st_dump_lvorder(root, i);
+}
+
+static void treeint_st_dump(void *ctx, enum dump_mode mode)
 {
     struct st_tree *tree = (struct st_tree *) ctx;
-    __treeint_st_dump(st_root(tree), 0);
+
+    pr_debug("[");
+    if (mode == PRE_ORDER)
+        treeint_st_dump_preorder(st_root(tree));
+    else
+        treeint_st_dump_lvorder(st_root(tree));
+    pr_debug("]\n");
 }
 
 #endif
