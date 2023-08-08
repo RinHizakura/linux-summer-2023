@@ -17,7 +17,7 @@ def stat(data):
 def bench(algo, n, seed):
     binary = 'build/treeint'
 
-    times = os.popen(f"./{binary} {algo} {n} {seed}").read()
+    times = os.popen(f"taskset -c 15 ./{binary} {algo} {n} {seed}").read()
     times = np.fromstring(times, dtype=int, sep=',')
     times = times[:-1] # remove the last seperator
     l = int(len(times) / 3)
@@ -33,16 +33,15 @@ def bench(algo, n, seed):
 os.system("make")
 
 algo_list=["s-tree", "rbtree"]
-nsize = list(int(1.4**k) for k in range(10, 50))
-ts = np.array([[bench(algo, size, 0) for size in nsize] for algo in algo_list])
+nsize = list(k for k in range(50, 100000, 50))
+ts = np.array([[bench(algo, size, size) for size in nsize] for algo in algo_list])
 
 pat_name = ["insert", "find", "remove"]
-fig, ax = plt.subplots(3)
+fig, ax = plt.subplots(3, figsize=(6, 10))
 for pat in range(0, 3):
     for idx, t in enumerate(ts):
         ax[pat].plot(nsize, t[:,pat], label=algo_list[idx])
     ax[pat].set_title(pat_name[pat])
-    ax[pat].set_xscale('log', base=2)
     ax[pat].set_ylim(bottom=0, top=None)
     ax[pat].legend()
 

@@ -84,9 +84,10 @@ int main(int argc, char *argv[])
 
     void *ctx = ops->init();
 
+    long long insert_time = 0;
     for (size_t i = 0; i < tree_size; ++i) {
         int v = seed ? rand_key(tree_size) : i;
-        long long insert_time = bench(ops->insert(ctx, v));
+        insert_time = bench(ops->insert(ctx, v));
         printf("%lld,", insert_time);
     }
     printf("\n");
@@ -94,18 +95,20 @@ int main(int argc, char *argv[])
     pr_debug("[ After insertions ]\n");
     ops->dump(ctx, LEVEL_ORDER);
 
+    long long find_time = 0;
     for (size_t i = 0; i < tree_size; ++i) {
         int v = seed ? rand_key(tree_size) : i;
-        long long find_time = bench(ops->find(ctx, v));
-        printf("%lld,", find_time);
+        find_time = bench(ops->find(ctx, v));
+        printf("%lld, ", find_time);
     }
     printf("\n");
 
     pr_debug("Removing...\n");
+    long long remove_time = 0;
     for (size_t i = 0; i < tree_size; ++i) {
         int v = seed ? rand_key(tree_size) : i;
-        long long remove_time = bench(ops->remove(ctx, v));
-        printf("%lld,", remove_time);
+        remove_time = bench(ops->remove(ctx, v));
+        printf("%lld, ", remove_time);
     }
     printf("\n");
 

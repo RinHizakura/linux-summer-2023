@@ -100,7 +100,8 @@ static int treeint_st_height(struct st_node *node)
 static void __treeint_st_dump_lvorder(struct st_node *node, int level)
 {
     if (node == NULL) {
-        pr_debug("NULL,");
+        if (level == 1)
+            pr_debug("null,");
         return;
     }
 

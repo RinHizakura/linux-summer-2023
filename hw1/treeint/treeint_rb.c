@@ -139,7 +139,8 @@ static int treeint_rb_height(struct rb_node *node)
 static void __treeint_rb_dump_lvorder(struct rb_node *node, int level)
 {
     if (node == NULL) {
-        pr_debug("NULL,");
+        if (level == 1)
+            pr_debug("null,");
         return;
     }
 

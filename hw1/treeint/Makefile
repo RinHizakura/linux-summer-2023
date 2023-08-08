@@ -1,4 +1,4 @@
-CFLAGS=-O2 -Wall -Wextra -MMD
+CFLAGS=-O2 -Wall -Wextra -MMD #-DPRINT_DEBUG
 LDFLAGS=
 
 OUT ?= build
