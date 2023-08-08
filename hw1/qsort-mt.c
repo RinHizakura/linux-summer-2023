@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include <assert.h>
 #include <errno.h>
 #include <pthread.h>
@@ -64,7 +65,7 @@ static inline void swapfunc(char *a, char *b, int n, int swaptype)
 
 #define CMP(t, x, y) (cmp((x), (y)))
 
-static inline char *med3(char *a, char *b, char *c, cmp_t *cmp, void *thunk)
+static inline char *med3(char *a, char *b, char *c, cmp_t *cmp, __attribute__((unused)) void *thunk)
 {
     return CMP(thunk, a, b) < 0
                ? (CMP(thunk, b, c) < 0 ? b : (CMP(thunk, a, c) < 0 ? c : a))
@@ -103,7 +104,7 @@ struct common {
     cmp_t *cmp;             /* Comparison function */
     int nthreads;           /* Total number of pool threads. */
     int idlethreads;        /* Number of idle threads in pool. */
-    int forkelem;           /* Minimum number of elements for a new thread. */
+    size_t forkelem;        /* Minimum number of elements for a new thread. */
     struct qsort *pool;     /* Fixed pool of threads. */
     pthread_mutex_t mtx_al; /* For allocating threads in the pool. */
 };
@@ -116,7 +117,7 @@ void qsort_mt(void *a,
               size_t es,
               cmp_t *cmp,
               int maxthreads,
-              int forkelem)
+              size_t forkelem)
 {
     struct qsort *qs;
     struct common c;
@@ -225,7 +226,7 @@ static void qsort_algo(struct qsort *qs)
     void *a;      /* Array of elements. */
     size_t n, es; /* Number of elements; size. */
     cmp_t *cmp;
-    int nl, nr;
+    size_t nl, nr;
     struct common *c;
     struct qsort *qs2;
 
@@ -290,7 +291,7 @@ top:
     pn = (char *) a + n * es;
     r = min(pa - (char *) a, pb - pa);
     vecswap(a, pb - r, r);
-    r = min(pd - pc, pn - pd - es);
+    r = min(pd - pc, pn - pd - (long)es);
     vecswap(pb, pn - r, r);
 
     if (swap_cnt == 0) { /* Switch to insertion sort */
@@ -420,10 +421,11 @@ int main(int argc, char *argv[])
     bool opt_time = false;
     bool opt_verify = false;
     bool opt_libc = false;
-    int ch, i;
+    int ch;
+    size_t i;
     size_t nelem = 10000000;
     int threads = 2;
-    int forkelements = 100;
+    size_t forkelements = 100;
     ELEM_T *int_elem = NULL;
     char *ep;
     char **str_elem = NULL;
@@ -434,7 +436,7 @@ int main(int argc, char *argv[])
     while ((ch = getopt(argc, argv, "f:h:ln:stv")) != -1) {
         switch (ch) {
         case 'f':
-            forkelements = (int) strtol(optarg, &ep, 10);
+            forkelements = (size_t) strtol(optarg, &ep, 10);
             if (forkelements <= 0 || *ep != '\0') {
                 warnx("illegal number, -f argument -- %s", optarg);
                 usage();
@@ -509,7 +511,7 @@ int main(int argc, char *argv[])
         for (i = 1; i < nelem; i++)
             if (int_elem[i - 1] > int_elem[i]) {
                 fprintf(stderr,
-                        "sort error at position %d: "
+                        "sort error at position %ld: "
                         " %d > %d\n",
                         i, int_elem[i - 1], int_elem[i]);
                 exit(2);
