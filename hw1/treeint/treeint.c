@@ -3,8 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include "treeint_st.h"
 #include "treeint_rb.h"
+#include "treeint_st.h"
 
 struct treeint_ops {
     void *(*init)();
@@ -42,7 +42,8 @@ static struct treeint_ops rbtree_ops = {
     ({                                                                    \
         struct timespec _tt1, _tt2;                                       \
         clock_gettime(CLOCK_MONOTONIC, &_tt1);                            \
-        statement clock_gettime(CLOCK_MONOTONIC, &_tt2);                  \
+        statement;                                                        \
+        clock_gettime(CLOCK_MONOTONIC, &_tt2);                            \
         long long time = (long long) (_tt2.tv_sec * 1e9 + _tt2.tv_nsec) - \
                          (long long) (_tt1.tv_sec * 1e9 + _tt1.tv_nsec);  \
         time;                                                             \
@@ -50,8 +51,8 @@ static struct treeint_ops rbtree_ops = {
 
 int main(int argc, char *argv[])
 {
-    if (argc < 3) {
-        printf("usage: treeint <algo> <tree size>\n");
+    if (argc < 4) {
+        printf("usage: treeint <algo> <tree size> <seed>\n");
         return -1;
     }
 
@@ -70,37 +71,47 @@ int main(int argc, char *argv[])
         return -3;
     }
 
-    srand(time(0));
+    /* Note: seed 0 is reserved as special value, it will
+     * perform linear operatoion. */
+    size_t seed = 0;
+    if (!sscanf(argv[3], "%ld", &seed)) {
+        printf("Invalid seed %s\n", argv[3]);
+        return -3;
+    }
+
+    srand(seed);
 
     void *ctx = ops->init();
 
-    long long insert_time = bench(for (size_t i = 0; i < tree_size; ++i)
-                                      ops->insert(ctx, rand_key(tree_size)););
+    for (size_t i = 0; i < tree_size; ++i) {
+        int v = seed ? rand_key(tree_size) : i;
+        long long insert_time = bench(ops->insert(ctx, v));
+        printf("%lld,", insert_time);
+    }
+    printf("\n");
 
     pr_debug("[ After insertions ]\n");
     ops->dump(ctx);
 
-    long long find_time = bench(for (size_t i = 0; i < tree_size; ++i)
-                                    ops->find(ctx, rand_key(tree_size)););
+    for (size_t i = 0; i < tree_size; ++i) {
+        int v = seed ? rand_key(tree_size) : i;
+        long long find_time = bench(ops->find(ctx, v));
+        printf("%lld,", find_time);
+    }
+    printf("\n");
 
     pr_debug("Removing...\n");
-    long long remove_time = bench(for (size_t i = 0; i < tree_size; ++i) {
-        int v = rand_key(tree_size);
-        pr_debug("%2d  ", v);
-        if ((i + 1) % 10 == 0) {
-            pr_debug("\n");
-        }
-        ops->remove(ctx, v);
-    });
-    pr_debug("\n");
+    for (size_t i = 0; i < tree_size; ++i) {
+        int v = seed ? rand_key(tree_size) : i;
+        long long remove_time = bench(ops->remove(ctx, v));
+        printf("%lld,", remove_time);
+    }
+    printf("\n");
 
     pr_debug("[ After removals ]\n");
     ops->dump(ctx);
 
     ops->destroy(ctx);
-
-    printf("%lld, %lld, %lld\n", insert_time / tree_size, find_time / tree_size,
-           remove_time / tree_size);
 
     return 0;
 }

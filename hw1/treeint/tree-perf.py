@@ -5,7 +5,6 @@ import matplotlib.pyplot as plt
 import os
 
 def stat(data):
-    data = np.array(data)
     mean, std = data.mean(), data.std()
     # identify outliers: 2 std = 95%
     cut_off = std * 2
@@ -15,23 +14,18 @@ def stat(data):
 
     return int(data.mean())
 
-def bench(algo, n):
+def bench(algo, n, seed):
     binary = 'build/treeint'
 
-    # FIXME: I know it may not be a great idea to collect
-    # data like this......
-    insert = []
-    find = []
-    remove = []
-    for _ in range(0, 100):
-        times = os.popen(f"taskset -c 15 ./{binary} {algo} {n}").read()
-        # strip out the '\n'
-        times = times.strip()
-        times = [int(x) for x in times.split(',')]
+    times = os.popen(f"./{binary} {algo} {n} {seed}").read()
+    times = np.fromstring(times, dtype=int, sep=',')
+    times = times[:-1] # remove the last seperator
+    l = int(len(times) / 3)
+    times = times.reshape(l, 3)
 
-        insert.append(times[0])
-        find.append(times[1])
-        remove.append(times[2])
+    insert = times[:,0]
+    find = times[:,1]
+    remove = times[:,2]
 
     return [stat(insert), stat(find), stat(remove)]
 
@@ -39,8 +33,8 @@ def bench(algo, n):
 os.system("make")
 
 algo_list=["s-tree", "rbtree"]
-nsize = list(int(2**k) for k in range(5, 20))
-ts = np.array([[bench(algo, size) for size in nsize] for algo in algo_list])
+nsize = list(int(1.4**k) for k in range(10, 50))
+ts = np.array([[bench(algo, size, 0) for size in nsize] for algo in algo_list])
 
 pat_name = ["insert", "find", "remove"]
 fig, ax = plt.subplots(3)

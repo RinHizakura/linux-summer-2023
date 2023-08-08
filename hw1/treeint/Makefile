@@ -16,10 +16,10 @@ clean:
 	$(RM) $(BINARY)
 
 test-stree: $(BINARY)
-	$(BINARY) s-tree 100
+	$(BINARY) s-tree 100 0
 
 test-rbtree: $(BINARY)
-	$(BINARY) rbtree 100
+	$(BINARY) rbtree 100 0
 
 %.o: %.c
 	@$(CC) -c $(CFLAGS) $< -o $@

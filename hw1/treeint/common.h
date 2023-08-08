@@ -18,9 +18,14 @@ static inline int throw_err(const char *str)
 
 //#define PRINT_DEBUG
 #ifdef PRINT_DEBUG
-#define pr_debug(...) fprintf(stderr, __VA_ARGS__)
+#define pr_debug(...)                \
+    do {                             \
+        fprintf(stderr, __VA_ARGS__) \
+    } while (0)
 #else
-#define pr_debug(...)
+#define pr_debug(...) \
+    do {              \
+    } while (0)
 #endif
 
 #define unlikely(x) __builtin_expect(!!(x), 0)
