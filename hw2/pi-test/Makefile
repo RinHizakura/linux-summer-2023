@@ -1,4 +1,4 @@
-CFLAGS=-O2 -Wall -Wextra -I.. -MMD -DUSE_LINUX
+CFLAGS=-O0 -Wall -Wextra -I.. -MMD -DUSE_LINUX
 LDFLAGS= -lpthread
 
 OUT ?= build
@@ -14,7 +14,7 @@ all: $(BINARY)
 
 # This should be run as root because we'll modify the schedule policy
 run: $(BINARY)
-	sudo $(BINARY)
+	sudo taskset -c 1 $(BINARY)
 clean:
 	$(RM) $(COBJS)
 	$(RM) $(BINARY)

@@ -1,7 +1,11 @@
 #include <errno.h>
 #include <pthread.h>
+#include <stdbool.h>
 #include <stdio.h>
+#include <unistd.h>
 
+//#define USE_PTHREADS 1
+#include "atomic.h"
 #include "mutex.h"
 
 /* NOTE: This macro is memory-wasted because it will create
@@ -17,13 +21,17 @@
 
 struct ctx {
     mutex_t m0;
-    mutex_t m1;
 };
 
 static void ctx_init(struct ctx *ctx)
 {
+#if USE_PTHREADS
+    pthread_mutexattr_t mattr;
+    pthread_mutexattr_setprotocol(&mattr, PTHREAD_PRIO_INHERIT);
+    pthread_mutex_init(&ctx->m0, &mattr);
+#else
     mutex_init(&ctx->m0);
-    mutex_init(&ctx->m1);
+#endif
 }
 
 static int pthread_create_with_prio(pthread_t *thread,
@@ -41,21 +49,44 @@ static int pthread_create_with_prio(pthread_t *thread,
     return 0;
 }
 
+static atomic bool thread_stop = false;
 static void *thread_low(void *arg)
 {
-    /* TODO */
+    /* The low priority thread takes the lock shared with high priority
+     * thread until it is finish. */
+    struct ctx *ctx = (struct ctx *) arg;
+
+    mutex_lock(&ctx->m0);
+    sleep(1);
+    mutex_unlock(&ctx->m0);
+
     return NULL;
 }
 
 static void *thread_mid(void *arg)
 {
-    /* TODO */
+    /* The middle priority thread is very busy, so it may
+     * block the high priority thread if priority inversion. */
+    struct ctx *ctx = (struct ctx *) arg;
+
+    while (!load(&thread_stop, relaxed))
+        ;
+
     return NULL;
 }
 
 static void *thread_high(void *arg)
 {
-    /* TODO */
+    struct ctx *ctx = (struct ctx *) arg;
+
+    mutex_lock(&ctx->m0);
+    /* If 'h' is printed, it means the high priority
+     * thread obtain the lock because the low priority thread
+     * releases it by priority inherit. */
+    if (load(&thread_stop, relaxed) == false)
+        printf("h");
+    mutex_unlock(&ctx->m0);
+
     return NULL;
 }
 
@@ -72,18 +103,22 @@ int main()
     ctx_init(&ctx);
 
     pthread_t low_t, mid_t, high_t;
-    /* Create the low priority thread */
-    TRY(pthread_create_with_prio(&low_t, &attr, thread_low, &ctx, 1));
+    /* Create the low priority thread, it comes first so the low priority thread
+     * has more chance to get lock in prior. */
+    TRY(pthread_create_with_prio(&low_t, &attr, thread_low, &ctx, 10));
     /* Create the middle priority thread */
-    TRY(pthread_create_with_prio(&mid_t, &attr, thread_mid, &ctx, 2));
+    TRY(pthread_create_with_prio(&mid_t, &attr, thread_mid, &ctx, 20));
     /* Create the high priority thread */
-    TRY(pthread_create_with_prio(&high_t, &attr, thread_high, &ctx, 3));
+    TRY(pthread_create_with_prio(&high_t, &attr, thread_high, &ctx, 30));
+
+    sleep(2);
+    store(&thread_stop, true, relaxed);
 
     TRY(pthread_join(low_t, NULL));
     TRY(pthread_join(mid_t, NULL));
     TRY(pthread_join(high_t, NULL));
 
-    printf("Test Done\n");
+    printf("\n");
 
     return 0;
 }
