@@ -1,5 +1,5 @@
-CFLAGS=-O0 -Wall -Wextra -I.. -MMD -DUSE_LINUX
-LDFLAGS= -lpthread
+CFLAGS=-O0 -Wall -Wextra -I.. -MMD -DUSE_LINUX -fsanitize=thread
+LDFLAGS= -lpthread -fsanitize=thread
 
 OUT ?= build
 BINARY = $(OUT)/pi-test

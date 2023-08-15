@@ -4,7 +4,6 @@
 #include <stdio.h>
 #include <unistd.h>
 
-//#define USE_PTHREADS 1
 #include "atomic.h"
 #include "mutex.h"
 

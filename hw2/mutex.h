@@ -22,6 +22,8 @@
 #include "futex.h"
 #include "spinlock.h"
 
+#define gettid() syscall(SYS_gettid)
+
 typedef struct Mutex mutex_t;
 struct Mutex {
     atomic int state;
@@ -49,6 +51,8 @@ enum {
         .state = 0, .protocal = 0 \
     }
 
+#define MUTEX_SPINS 128
+
 static bool mutex_trylock_default(mutex_t *mutex)
 {
     int state = load(&mutex->state, relaxed);
@@ -65,7 +69,6 @@ static bool mutex_trylock_default(mutex_t *mutex)
 
 static inline void mutex_lock_default(mutex_t *mutex)
 {
-#define MUTEX_SPINS 128
     for (int i = 0; i < MUTEX_SPINS; ++i) {
         if (mutex->trylock(mutex))
             return;
@@ -89,6 +92,50 @@ static inline void mutex_unlock_default(mutex_t *mutex)
         futex_wake(&mutex->state, 1);  // FFFF
 }
 
+/* FIXME: The memory model should be considered carefully. */
+#define cmpxchg(obj, expect, desired) \
+    compare_exchange_strong(obj, expect, desired, relaxed, relaxed)
+
+static bool mutex_trylock_pi(mutex_t *mutex)
+{
+    /* TODO: We have FUTEX_TRYLOCK_PI which enable for special
+     * trylock in kernel, but it should be fine to just try at
+     * userspace now. */
+    pid_t zero = 0;
+    pid_t tid = gettid();
+
+    /* Try to obtain the lock if it is not contended */
+    if (cmpxchg(&mutex->state, &zero, tid))
+        return true;
+
+    thread_fence(&mutex->state, acquire);
+    return false;
+}
+
+static inline void mutex_lock_pi(mutex_t *mutex)
+{
+    for (int i = 0; i < MUTEX_SPINS; ++i) {
+        if (mutex->trylock(mutex))
+            return;
+        spin_hint();
+    }
+
+    /* Since timeout is set as NULL, so we block until the lock is obtain. */
+    futex_lock_pi(&mutex->state, NULL);
+
+    thread_fence(&mutex->state, acquire);
+}
+
+static inline void mutex_unlock_pi(mutex_t *mutex)
+{
+    pid_t tid = gettid();
+
+    if (cmpxchg(&mutex->state, &tid, 0))
+        return;
+
+    futex_unlock_pi(&mutex->state);
+}
+
 static inline void mutex_init(mutex_t *mutex, mutexattr_t *mattr)
 {
     atomic_init(&mutex->state, 0);
@@ -99,7 +146,15 @@ static inline void mutex_init(mutex_t *mutex, mutexattr_t *mattr)
     mutex->unlock = mutex_unlock_default;
 
     if (mattr) {
-        /* TODO */
+        switch (mattr->protocol) {
+        case PRIO_INHERIT:
+            mutex->trylock = mutex_trylock_pi;
+            mutex->lock = mutex_lock_pi;
+            mutex->unlock = mutex_unlock_pi;
+            break;
+        default:
+            break;
+        }
     }
 }
 
