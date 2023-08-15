@@ -7,6 +7,7 @@
 #define mutex_t pthread_mutex_t
 #define mutexattr_t pthread_mutexattr_t
 #define mutex_init(m, attr) pthread_mutex_init(m, attr)
+#define mutex_destroy(m) pthread_mutex_destroy(m)
 #define MUTEX_INITIALIZER PTHREAD_MUTEX_INITIALIZER
 #define mutex_trylock(m) (!pthread_mutex_trylock(m))
 #define mutex_lock pthread_mutex_lock
@@ -176,6 +177,11 @@ static inline void mutex_unlock(mutex_t *mutex)
 static inline void mutexattr_setprotocol(mutexattr_t *mattr, int protocol)
 {
     mattr->protocol = protocol;
+}
+
+static inline void mutex_destroy(mutex_t *mutex)
+{
+    /* Do nothing now, just for API convention. */
 }
 
 #endif
