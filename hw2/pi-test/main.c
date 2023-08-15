@@ -25,13 +25,9 @@ struct ctx {
 
 static void ctx_init(struct ctx *ctx)
 {
-#if USE_PTHREADS
-    pthread_mutexattr_t mattr;
-    pthread_mutexattr_setprotocol(&mattr, PTHREAD_PRIO_INHERIT);
-    pthread_mutex_init(&ctx->m0, &mattr);
-#else
-    mutex_init(&ctx->m0);
-#endif
+    mutexattr_t mattr;
+    mutexattr_setprotocol(&mattr, PRIO_INHERIT);
+    mutex_init(&ctx->m0, &mattr);
 }
 
 static int pthread_create_with_prio(pthread_t *thread,
