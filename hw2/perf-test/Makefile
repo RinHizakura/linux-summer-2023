@@ -1,36 +1,23 @@
-CFLAGS=-O0 -Wall -Wextra -I.. -MMD #-g -fsanitize=thread
-LDFLAGS= -lpthread #-fsanitize=thread
+CFLAGS := -I.. -Wall -O2 -D_GNU_SOURCE
+LDFLAGS := -lpthread
 
 OUT ?= build
-BINARY = $(OUT)/perf-test
+ALL := test_pthread test_linux
 
 SHELL_HACK := $(shell mkdir -p $(OUT))
 
-CSRCS = $(shell find . -name '*.c')
-_COBJ =  $(notdir $(CSRCS))
-COBJS = $(_COBJ:%.c=$(OUT)/%.o)
+all: $(ALL)
+.PHONY: all
 
-ifeq ("$(LINUX)","1")
-    CFLAGS +=  -DUSE_LINUX
-endif
+$(OUT)/test_%: main.c
+	$(CC) $(CFLAGS) main.c -o $@ $(LDFLAGS)
 
-ifeq ("$(PTHREADS)","1")
-    CFLAGS +=  -DUSE_PTHREADS
-endif
-
-all: clean $(BINARY)
-
-run: $(BINARY)
-	$(BINARY)
+test_pthread: CFLAGS += -DUSE_PTHREADS
+test_pthread: $(OUT)/test_pthread
+test_linux: CFLAGS += -DUSE_LINUX
+test_linux: $(OUT)/test_linux
 
 clean:
-	$(RM) $(COBJS)
-	$(RM) $(BINARY)
-
-$(BINARY): $(COBJS)
-	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
-
-$(OUT)/%.o: %.c
-	$(CC) -c $(CFLAGS) $< -o $@
-
--include $(OUT)/*.d
+	$(RM) $(OUT)/test_pthread
+	$(RM) $(OUT)/test_linux
+.PHONY: clean

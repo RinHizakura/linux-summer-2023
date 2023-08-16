@@ -25,6 +25,7 @@
 
 #include <pthread.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include "mutex.h"
 
 #define max(a, b)           \
@@ -223,10 +224,12 @@ int main()
     }
 
     qsort(times, MEASURE_TIME, sizeof(long long), cmp);
-    printf("Min time %lldns\n", times[0]);
-    printf("Median time %lldns\n", times[MEASURE_TIME / 2]);
-    printf("Max time %lldns\n", times[MEASURE_TIME - 1]);
-    printf("Average time %lldns\n", total_time / MEASURE_TIME);
+    for (int i = 0; i < MEASURE_TIME; i++) {
+        printf("%lld, ", times[i]);
+    }
+    printf("\n");
+
+    // printf("Average %lld\n", total_time/MEASURE_TIME);
 
     return 0;
 }
