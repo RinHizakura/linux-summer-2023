@@ -27,12 +27,35 @@
 #include <stdio.h>
 #include "mutex.h"
 
+#define max(a, b)           \
+    ({                      \
+        typeof(a) _a = (a); \
+        typeof(b) _b = (b); \
+        _a > _b ? _a : _b;  \
+    })
+
+#define min(a, b)           \
+    ({                      \
+        typeof(a) _a = (a); \
+        typeof(b) _b = (b); \
+        _a < _b ? _a : _b;  \
+    })
+
+#define MEASURE_TIME 100
+
 #define THREAD_MAX 4
 #define LOCK_MAX (THREAD_MAX + 1)
 
 #define THREAD_ITERS \
     50  // The times for a thread that tries to acquire the next lock
 #define TOTAL_ITERS (THREAD_MAX * THREAD_ITERS)
+
+static long long ns_time()
+{
+    struct timespec tt;
+    clock_gettime(CLOCK_MONOTONIC, &tt);
+    return tt.tv_sec * 1e9 + tt.tv_nsec;
+}
 
 struct common {
     /* As https://github.com/jserv/skinny-mutex/blob/master/perf.c#L116 explain:
@@ -88,6 +111,8 @@ static void *thread_func(void *arg)
     pthread_mutex_lock(&ctx->start_mutex);
     pthread_mutex_unlock(&ctx->start_mutex);
 
+    ctx->start = ns_time();
+
     /* Core routine here */
     for (int loop = 1; loop < THREAD_ITERS; loop++) {
         int next = (i + 1) % LOCK_MAX;
@@ -95,6 +120,8 @@ static void *thread_func(void *arg)
         mutex_unlock(&common->mutexes[i]);
         i = next;
     }
+
+    ctx->stop = ns_time();
 
     mutex_unlock(&common->mutexes[i]);
     return NULL;
@@ -132,7 +159,7 @@ static void free_ctx(struct thread_ctx *ctx)
     pthread_mutex_destroy(&ctx->start_mutex);
 }
 
-static void contention_test()
+static long long contention_test()
 {
     struct common common;
     struct thread_ctx ctx[THREAD_MAX];
@@ -166,12 +193,40 @@ static void contention_test()
     }
 
     free_common(&common);
+
+    /* Let's check the time range to finish TOTAL_ITERS times of
+     * lock contention. */
+    long long start = ctx[0].start;
+    long long stop = ctx[0].stop;
+    for (int i = 1; i < THREAD_MAX; i++) {
+        start = min(ctx[i].start, start);
+        stop = max(ctx[i].stop, stop);
+    }
+
+    return stop - start;
+}
+
+static int cmp(const void *ap, const void *bp)
+{
+    long long a = *(long long *) ap;
+    long long b = *(long long *) bp;
+    return a - b;
 }
 
 int main()
 {
-    contention_test();
+    long long times[MEASURE_TIME];
+    long long total_time = 0;
+    for (int i = 0; i < MEASURE_TIME; i++) {
+        times[i] = contention_test();
+        total_time += times[i];
+    }
 
-    printf("Test done\n");
+    qsort(times, MEASURE_TIME, sizeof(long long), cmp);
+    printf("Min time %lldns\n", times[0]);
+    printf("Median time %lldns\n", times[MEASURE_TIME / 2]);
+    printf("Max time %lldns\n", times[MEASURE_TIME - 1]);
+    printf("Average time %lldns\n", total_time / MEASURE_TIME);
+
     return 0;
 }
