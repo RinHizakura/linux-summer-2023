@@ -1,16 +1,13 @@
-CFLAGS := -I.. -std=c11 -Wall -g -O2 -D_GNU_SOURCE -fsanitize=thread -MMD
+CFLAGS := -I.. -std=c11 -Wall -g -O2 -D_GNU_SOURCE -fsanitize=thread
 LDFLAGS := -lpthread
 
-OUT ?= build
 ALL := test_pthread test_linux
-
-SHELL_HACK := $(shell mkdir -p $(OUT))
 
 all: $(ALL)
 .PHONY: all
 
 test_%: main.c
-	$(CC) $(CFLAGS) main.c -o $(OUT)/$@ $(LDFLAGS)
+	$(CC) $(CFLAGS) main.c -o $@ $(LDFLAGS)
 
 test_pthread: CFLAGS += -DUSE_PTHREADS
 test_linux: CFLAGS += -DUSE_LINUX
@@ -29,7 +26,7 @@ notice = $(PRINTF) "$(PASS_COLOR)$(strip $1)$(NO_COLOR)\n"
 check: $(ALL)
 	@$(foreach t,$^,\
 	    $(PRINTF) "Running $(t) ... "; \
-	    ./$(OUT)/$(t) && $(call notice, [OK]); \
+	    ./$(t) && $(call notice, [OK]); \
 	)
 
 clean:
