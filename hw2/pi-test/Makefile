@@ -18,6 +18,7 @@ run: $(BINARY)
 clean:
 	$(RM) $(COBJS)
 	$(RM) $(BINARY)
+	$(RM) $(OUT)/*.d
 
 $(BINARY): $(COBJS)
 	@$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
