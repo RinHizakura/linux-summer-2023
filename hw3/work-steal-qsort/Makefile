@@ -1,5 +1,5 @@
-CFLAGS = -Wall -Wextra -Werror -Iinclude -fsanitize=address -fno-omit-frame-pointer -fno-common -g
-LDFLAGS = -fsanitize=address -lpthread
+CFLAGS = -O2 -Wall -Wextra -Werror -Iinclude -g
+LDFLAGS = -lpthread
 
 CURDIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 OUT ?= build
