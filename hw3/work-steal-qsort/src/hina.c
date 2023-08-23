@@ -87,7 +87,7 @@ static work_t *steal(deque_t *q)
 static void do_work(work_t *work)
 {
     while (work)
-        work = (*(work->code))(work);
+        work = (work->code)(work);
 }
 
 static void *thread(void *args)
@@ -143,10 +143,10 @@ void hina_init()
     }
 }
 
-void hina_add_task(__attribute__((unused)) task_t task)
+void hina_add_task(task_t task)
 {
     work_t *work = malloc(sizeof(work_t) + 2 * sizeof(int *));
-    work->code = &task;
+    work->code = task;
     work->join_count = 0;
     push(&thread_queues[0], work);
 }
