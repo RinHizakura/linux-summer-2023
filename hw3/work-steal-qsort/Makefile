@@ -16,6 +16,9 @@ vpath %.c $(sort $(dir $(CSRCS)))
 
 all: $(BINARY)
 
+run: $(BINARY)
+	$(BINARY)
+
 $(OUT)/%.o: %.c
 	$(CC) -c $(CFLAGS) $< -o $@
 

@@ -41,3 +41,10 @@ void deque_resize(deque_t *q)
      * memory actively employed by the functional queues.
      */
 }
+
+/* This is expected to run at the end of program, so
+ * assuming no synchronization is required here. */
+void deque_free(deque_t *q)
+{
+    free(q->array);
+}

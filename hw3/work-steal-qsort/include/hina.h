@@ -2,12 +2,10 @@
 #define HINA_H
 
 #include <stdatomic.h>
-#include "task.h"
-
-typedef void (*task_t)(void *args[]);
+#include "type.h"
 
 void hina_init();
-void hina_add_task(task_t task);
+void hina_spawn(task_t task, dtor_t dtor, void *args);
 void hina_exit();
 
 #endif

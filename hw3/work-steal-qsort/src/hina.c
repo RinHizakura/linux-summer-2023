@@ -15,6 +15,11 @@ static work_t *EMPTY = (work_t *) 0x100, *ABORT = (work_t *) 0x200;
 typedef struct hina {
     pthread_t threads[N_THREADS];
     int tids[N_THREADS];
+
+    atomic_size_t active;
+    atomic_bool done;
+
+    struct list_head list;
 } hina_t;
 
 static hina_t hina;
@@ -83,8 +88,11 @@ static work_t *steal(deque_t *q)
 
 static void do_work(work_t *work)
 {
-    if (work)
+    if (work) {
         (work->code)(work->args);
+        (work->dtor)(work->args);
+        atomic_fetch_sub_explicit(&hina.active, 1, memory_order_relaxed);
+    }
 }
 
 static void *thread(void *args)
@@ -113,6 +121,8 @@ static void *thread(void *args)
                 break;
             }
             if (stolen == EMPTY) {
+                if (atomic_load(&hina.done))
+                    break;
                 continue;
             } else {
                 do_work(stolen);
@@ -125,6 +135,8 @@ static void *thread(void *args)
 void hina_init()
 {
     thread_queues = malloc(N_THREADS * sizeof(deque_t));
+
+    INIT_LIST_HEAD(&hina.list);
 
     for (int i = 0; i < N_THREADS; ++i) {
         deque_init(&thread_queues[i], 8);
@@ -140,20 +152,44 @@ void hina_init()
     }
 }
 
-void hina_add_task(task_t task)
+void hina_spawn(task_t task, dtor_t dtor, void *args)
 {
-    work_t *work = malloc(sizeof(work_t) + 2 * sizeof(int *));
+    work_t *work = malloc(sizeof(work_t));
     work->code = task;
+    work->dtor = dtor;
     work->join_count = 0;
+    work->args = args;
+    list_add_tail(&work->node, &hina.list);
+
+    atomic_fetch_add_explicit(&hina.active, 1, memory_order_relaxed);
+
+    /* FIXME: Do we need to pick up the availibe queue for load balancing? Or
+     * the stealer can do this implicitly? */
     push(&thread_queues[0], work);
 }
 
 void hina_exit()
 {
+    /* FIXME: busy waiting until there're no active job */
+    while (atomic_load_explicit(&hina.active, memory_order_relaxed) != 0)
+
+        atomic_store(&hina.done, true);
+
     for (int i = 0; i < N_THREADS; ++i) {
         if (pthread_join(hina.threads[i], NULL) != 0) {
             perror("Failed to join the thread");
             exit(EXIT_FAILURE);
         }
     }
+
+    work_t *work, *tmp;
+    list_for_each_entry_safe (work, tmp, &hina.list, node) {
+        list_del(&work->node);
+        free(work);
+    }
+
+    for (int i = 0; i < N_THREADS; ++i) {
+        deque_free(&thread_queues[i]);
+    }
+    free(thread_queues);
 }

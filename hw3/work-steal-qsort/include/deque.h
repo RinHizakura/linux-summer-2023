@@ -17,5 +17,6 @@ typedef struct {
 
 void deque_init(deque_t *q, int size_hint);
 void deque_resize(deque_t *q);
+void deque_free(deque_t *q);
 
 #endif
