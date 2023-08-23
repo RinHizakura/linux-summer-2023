@@ -46,5 +46,7 @@ void deque_resize(deque_t *q)
  * assuming no synchronization is required here. */
 void deque_free(deque_t *q)
 {
+    /* FIXME: if resize happened, we should also
+     * take care of those unused array buffer. */
     free(q->array);
 }
