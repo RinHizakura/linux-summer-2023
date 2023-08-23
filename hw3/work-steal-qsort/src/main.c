@@ -239,6 +239,7 @@ int main()
     qsort_common->cmp = num_compare;
 
     hina_init();
+    hina_run();
     qsort_spawn(int_elem, nelem);
     hina_exit();
 

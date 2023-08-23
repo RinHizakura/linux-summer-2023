@@ -1,6 +1,11 @@
 CFLAGS = -O2 -Wall -Wextra -Werror -Iinclude -g
 LDFLAGS = -lpthread
 
+ifeq ("$(TSAN)", "1")
+    CFLAGS +=  -fsanitize=thread
+    LDFLAGS += -fsanitize=thread
+endif
+
 CURDIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 OUT ?= build
 BINARY = $(OUT)/qsort-mt

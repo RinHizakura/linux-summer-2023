@@ -142,14 +142,6 @@ void hina_init()
         deque_init(&thread_queues[i], 8);
         hina.tids[i] = i;
     }
-
-    for (int i = 0; i < N_THREADS; ++i) {
-        if (pthread_create(&hina.threads[i], NULL, thread, &hina.tids[i]) !=
-            0) {
-            perror("Failed to start the thread");
-            exit(EXIT_FAILURE);
-        }
-    }
 }
 
 void hina_spawn(task_t task, dtor_t dtor, void *args)
@@ -168,12 +160,24 @@ void hina_spawn(task_t task, dtor_t dtor, void *args)
     push(&thread_queues[0], work);
 }
 
+void hina_run()
+{
+    for (int i = 0; i < N_THREADS; ++i) {
+        if (pthread_create(&hina.threads[i], NULL, thread, &hina.tids[i]) !=
+            0) {
+            perror("Failed to start the thread");
+            exit(EXIT_FAILURE);
+        }
+    }
+}
+
 void hina_exit()
 {
     /* FIXME: busy waiting until there're no active job */
     while (atomic_load_explicit(&hina.active, memory_order_relaxed) != 0)
+        ;
 
-        atomic_store(&hina.done, true);
+    atomic_store(&hina.done, true);
 
     for (int i = 0; i < N_THREADS; ++i) {
         if (pthread_join(hina.threads[i], NULL) != 0) {
