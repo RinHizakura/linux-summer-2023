@@ -2,7 +2,9 @@
 #define HINA_H
 
 #include <stdatomic.h>
-#include "work.h"
+#include "task.h"
+
+typedef void (*task_t)(void *args[]);
 
 void hina_init();
 void hina_add_task(task_t task);

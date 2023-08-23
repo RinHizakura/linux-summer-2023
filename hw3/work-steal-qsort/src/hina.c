@@ -81,13 +81,10 @@ static work_t *steal(deque_t *q)
     return x;
 }
 
-/* Returns the subsequent item available for processing, or NULL if no items
- * are remaining.
- */
 static void do_work(work_t *work)
 {
-    while (work)
-        work = (work->code)(work);
+    if (work)
+        (work->code)(work->args);
 }
 
 static void *thread(void *args)
