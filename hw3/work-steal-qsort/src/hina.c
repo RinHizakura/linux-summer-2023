@@ -20,6 +20,7 @@ typedef struct hina {
     atomic_bool done;
 
     struct list_head list;
+    pthread_mutex_t list_lock;
 } hina_t;
 
 static hina_t hina;
@@ -55,16 +56,19 @@ static work_t *take(deque_t *q)
 
 static void push(deque_t *q, work_t *w)
 {
-    size_t b = atomic_load_explicit(&q->bottom, memory_order_relaxed);
-    size_t t = atomic_load_explicit(&q->top, memory_order_acquire);
-    array_t *a = atomic_load_explicit(&q->array, memory_order_relaxed);
-    if (b - t > a->size - 1) { /* Full queue */
-        deque_resize(q);
-        a = atomic_load_explicit(&q->array, memory_order_relaxed);
-    }
-    atomic_store_explicit(&a->buffer[b % a->size], w, memory_order_relaxed);
-    atomic_thread_fence(memory_order_release);
-    atomic_store_explicit(&q->bottom, b + 1, memory_order_relaxed);  // DDDD
+    size_t b;
+    do {
+        b = atomic_load_explicit(&q->bottom, memory_order_relaxed);
+        size_t t = atomic_load_explicit(&q->top, memory_order_acquire);
+        array_t *a = atomic_load_explicit(&q->array, memory_order_relaxed);
+        if (b - t > a->size - 1) { /* Full queue */
+            deque_resize(q);
+            a = atomic_load_explicit(&q->array, memory_order_relaxed);
+        }
+        atomic_store_explicit(&a->buffer[b % a->size], w, memory_order_relaxed);
+        atomic_thread_fence(memory_order_release);
+    } while (!atomic_compare_exchange_strong_explicit(
+        &q->bottom, &b, b + 1, memory_order_release, memory_order_relaxed));
 }
 
 static work_t *steal(deque_t *q)
@@ -140,6 +144,7 @@ void hina_init()
     thread_queues = malloc(N_THREADS * sizeof(deque_t));
 
     INIT_LIST_HEAD(&hina.list);
+    pthread_mutex_init(&hina.list_lock, NULL);
 
     for (int i = 0; i < N_THREADS; ++i) {
         deque_init(&thread_queues[i], 8);
@@ -154,7 +159,10 @@ void hina_spawn(task_t task, dtor_t dtor, void *args)
     atomic_store_explicit(&work->dtor, dtor, memory_order_seq_cst);
     atomic_store_explicit(&work->args, args, memory_order_seq_cst);
     work->join_count = 0;
+
+    pthread_mutex_lock(&hina.list_lock);
     list_add_tail(&work->node, &hina.list);
+    pthread_mutex_unlock(&hina.list_lock);
 
     atomic_fetch_add_explicit(&hina.active, 1, memory_order_relaxed);
 
@@ -188,6 +196,8 @@ void hina_exit()
             exit(EXIT_FAILURE);
         }
     }
+
+    pthread_mutex_destroy(&hina.list_lock);
 
     work_t *work, *tmp;
     list_for_each_entry_safe (work, tmp, &hina.list, node) {

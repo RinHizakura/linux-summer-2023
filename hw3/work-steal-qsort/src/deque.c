@@ -22,9 +22,14 @@ void deque_resize(deque_t *q)
     atomic_init(&new->size, new_size);
     size_t t = atomic_load_explicit(&q->top, memory_order_relaxed);
     size_t b = atomic_load_explicit(&q->bottom, memory_order_relaxed);
-    for (size_t i = t; i < b; i++)
-        new->buffer[i % new_size] = a->buffer[i % old_size];
+    for (size_t i = t; i < b; i++) {
+        work_t *old = atomic_load_explicit(&a->buffer[i % old_size],
+                                           memory_order_relaxed);
+        atomic_store_explicit(&new->buffer[i % new_size], old,
+                              memory_order_relaxed);
+    }
 
+    atomic_thread_fence(memory_order_seq_cst);
     atomic_store_explicit(&q->array, new, memory_order_relaxed);
     /* The question arises as to the appropriate timing for releasing memory
      * associated with the previous array denoted by *a. In the original Chase

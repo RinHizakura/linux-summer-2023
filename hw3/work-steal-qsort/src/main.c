@@ -204,7 +204,9 @@ nevermind:
     nl = (pb - pa) / es;
     nr = (pd - pc) / es;
 
-    if (nl > 0) {
+    if (nl > 100 && nr > 100) {
+        qsort_spawn(a, nl);
+    } else if (nl > 0) {
         qs->a = a;
         qs->n = nl;
         qsort_algo(qs);
@@ -224,7 +226,7 @@ static void qsort_dtor(void *args)
 
 int main()
 {
-    size_t nelem = 10000000;
+    size_t nelem = 1000;
     size_t es = sizeof(ELEM_T);
     ELEM_T *int_elem = xmalloc(nelem * sizeof(ELEM_T));
     for (size_t i = 0; i < nelem; i++)
@@ -250,6 +252,8 @@ int main()
             break;
         }
     }
+
+    printf("Done\n");
 
     free(qsort_common);
     free(int_elem);
