@@ -89,8 +89,11 @@ static work_t *steal(deque_t *q)
 static void do_work(work_t *work)
 {
     if (work) {
-        (work->code)(work->args);
-        (work->dtor)(work->args);
+        task_t code = atomic_load_explicit(&work->code, memory_order_seq_cst);
+        dtor_t dtor = atomic_load_explicit(&work->dtor, memory_order_seq_cst);
+        void *args = atomic_load_explicit(&work->args, memory_order_seq_cst);
+        code(args);
+        dtor(args);
         atomic_fetch_sub_explicit(&hina.active, 1, memory_order_relaxed);
     }
 }
@@ -147,10 +150,10 @@ void hina_init()
 void hina_spawn(task_t task, dtor_t dtor, void *args)
 {
     work_t *work = malloc(sizeof(work_t));
-    work->code = task;
-    work->dtor = dtor;
+    atomic_store_explicit(&work->code, task, memory_order_seq_cst);
+    atomic_store_explicit(&work->dtor, dtor, memory_order_seq_cst);
+    atomic_store_explicit(&work->args, args, memory_order_seq_cst);
     work->join_count = 0;
-    work->args = args;
     list_add_tail(&work->node, &hina.list);
 
     atomic_fetch_add_explicit(&hina.active, 1, memory_order_relaxed);
