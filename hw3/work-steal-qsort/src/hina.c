@@ -5,10 +5,6 @@
 #include <stdlib.h>
 #include "deque.h"
 
-/* These are non-NULL pointers that will result in page faults under normal
- * circumstances, used to verify that nobody uses non-initialized entries.
- */
-static work_t *EMPTY = (work_t *) 0x100, *ABORT = (work_t *) 0x200;
 
 #define N_THREADS 24
 
@@ -26,76 +22,12 @@ typedef struct hina {
 static hina_t hina;
 static deque_t *thread_queues;
 
-static work_t *take(deque_t *q)
-{
-    size_t b = atomic_load_explicit(&q->bottom, memory_order_relaxed) - 1;
-    array_t *a = atomic_load_explicit(&q->array, memory_order_relaxed);
-    atomic_store_explicit(&q->bottom, b, memory_order_relaxed);
-    atomic_thread_fence(memory_order_seq_cst);
-    size_t t = atomic_load_explicit(&q->top, memory_order_relaxed);
-    work_t *x = EMPTY;
-    if (t <= b) {
-        /* Non-empty queue */
-        x = atomic_load_explicit(&a->buffer[b % a->size], memory_order_relaxed);
-        if (t == b) {
-            /* Single last element in queue */
-            if (!atomic_compare_exchange_strong_explicit(
-                    &q->top, &t, t + 1,  // AAAA
-                    memory_order_seq_cst, memory_order_relaxed))
-                /* Failed race */
-                x = EMPTY;
-            atomic_store_explicit(&q->bottom, b + 1,
-                                  memory_order_relaxed);  // BBBB
-        }
-    } else { /* Empty queue */
-        x = EMPTY;
-        atomic_store_explicit(&q->bottom, b + 1, memory_order_relaxed);  // CCCC
-    }
-    return x;
-}
-
-static void push(deque_t *q, work_t *w)
-{
-    size_t b;
-    do {
-        b = atomic_load_explicit(&q->bottom, memory_order_relaxed);
-        size_t t = atomic_load_explicit(&q->top, memory_order_acquire);
-        array_t *a = atomic_load_explicit(&q->array, memory_order_relaxed);
-        if (b - t > a->size - 1) { /* Full queue */
-            deque_resize(q);
-            a = atomic_load_explicit(&q->array, memory_order_relaxed);
-        }
-        atomic_store_explicit(&a->buffer[b % a->size], w, memory_order_relaxed);
-        atomic_thread_fence(memory_order_release);
-    } while (!atomic_compare_exchange_strong_explicit(
-        &q->bottom, &b, b + 1, memory_order_release, memory_order_relaxed));
-}
-
-static work_t *steal(deque_t *q)
-{
-    size_t t = atomic_load_explicit(&q->top, memory_order_acquire);
-    atomic_thread_fence(memory_order_seq_cst);
-    size_t b = atomic_load_explicit(&q->bottom, memory_order_acquire);
-    work_t *x = EMPTY;
-    if (t < b) {
-        /* Non-empty queue */
-        array_t *a = atomic_load_explicit(&q->array, memory_order_consume);
-        x = atomic_load_explicit(&a->buffer[t % a->size], memory_order_relaxed);
-        if (!atomic_compare_exchange_strong_explicit(
-                &q->top, &t, t + 1, memory_order_seq_cst,
-                memory_order_relaxed))  // EEEE
-            /* Failed race */
-            return ABORT;
-    }
-    return x;
-}
-
 static void do_work(work_t *work)
 {
     if (work) {
-        task_t code = atomic_load_explicit(&work->code, memory_order_seq_cst);
-        dtor_t dtor = atomic_load_explicit(&work->dtor, memory_order_seq_cst);
-        void *args = atomic_load_explicit(&work->args, memory_order_seq_cst);
+        task_t code = work->code;
+        dtor_t dtor = work->dtor;
+        void *args = work->args;
         code(args);
         dtor(args);
         atomic_fetch_sub_explicit(&hina.active, 1, memory_order_relaxed);
@@ -108,7 +40,7 @@ static void *thread(void *args)
     deque_t *my_queue = &thread_queues[id];
 
     while (true) {
-        work_t *work = take(my_queue);
+        work_t *work = deque_take(my_queue);
         if (work != EMPTY) {
             do_work(work);
         } else {
@@ -117,7 +49,7 @@ static void *thread(void *args)
             for (int i = 0; i < N_THREADS; ++i) {
                 if (i == id)
                     continue;
-                stolen = steal(&thread_queues[i]);
+                stolen = deque_steal(&thread_queues[i]);
                 if (stolen == ABORT) {
                     i--;
                     continue; /* Try again at the same i */
@@ -155,9 +87,9 @@ void hina_init()
 void hina_spawn(task_t task, dtor_t dtor, void *args)
 {
     work_t *work = malloc(sizeof(work_t));
-    atomic_store_explicit(&work->code, task, memory_order_seq_cst);
-    atomic_store_explicit(&work->dtor, dtor, memory_order_seq_cst);
-    atomic_store_explicit(&work->args, args, memory_order_seq_cst);
+    work->code = task;
+    work->dtor = dtor;
+    work->args = args;
     work->join_count = 0;
 
     pthread_mutex_lock(&hina.list_lock);
@@ -168,7 +100,7 @@ void hina_spawn(task_t task, dtor_t dtor, void *args)
 
     /* FIXME: Do we need to pick up the availibe queue for load balancing? Or
      * the stealer can do this implicitly? */
-    push(&thread_queues[0], work);
+    deque_push(&thread_queues[0], work);
 }
 
 void hina_run()

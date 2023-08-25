@@ -1,4 +1,4 @@
-CFLAGS = -O2 -Wall -Wextra -Werror -Iinclude -g
+CFLAGS = -O2 -Wall -Wextra -Iinclude -g
 LDFLAGS = -lpthread
 
 ifeq ("$(TSAN)", "1")
