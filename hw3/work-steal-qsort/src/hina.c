@@ -5,7 +5,6 @@
 #include <stdlib.h>
 #include "deque.h"
 
-
 #define N_THREADS 24
 
 typedef struct hina {
@@ -34,10 +33,15 @@ static void do_work(work_t *work)
     }
 }
 
+
+static __thread int tid = 0;
+
 static void *thread(void *args)
 {
     int id = *(int *) args;
     deque_t *my_queue = &thread_queues[id];
+
+    tid = id;
 
     while (true) {
         work_t *work = deque_take(my_queue);
@@ -84,6 +88,15 @@ void hina_init()
     }
 }
 
+/* Spawn a new work. Note: The new work has to be put onto the
+ * thread-corresponding deque. By doing so, we don't have to
+ * sychronize multiple producer scenario.
+ *
+ * It isn't recommend to do spawn outside of a work function
+ * except the first spawn, as the work will be put onto
+ * deque<tid=0> by default and thus may introduce race. In other
+ * words, you have to first spawn a main work and use to it spawn
+ * other works for the correctness of this API. */
 void hina_spawn(task_t task, dtor_t dtor, void *args)
 {
     work_t *work = malloc(sizeof(work_t));
@@ -100,7 +113,7 @@ void hina_spawn(task_t task, dtor_t dtor, void *args)
 
     /* FIXME: Do we need to pick up the availibe queue for load balancing? Or
      * the stealer can do this implicitly? */
-    deque_push(&thread_queues[0], work);
+    deque_push(&thread_queues[tid], work);
 }
 
 void hina_run()

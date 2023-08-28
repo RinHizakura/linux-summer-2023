@@ -226,7 +226,7 @@ static void qsort_dtor(void *args)
 
 int main()
 {
-    size_t nelem = 10000;
+    size_t nelem = 100000;
     size_t es = sizeof(ELEM_T);
     ELEM_T *int_elem = xmalloc(nelem * sizeof(ELEM_T));
     for (size_t i = 0; i < nelem; i++)
