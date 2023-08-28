@@ -1,14 +1,18 @@
 #include <assert.h>
 #include <err.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 #include <unistd.h>
 #include "hina.h"
 
 #ifndef ELEM_T
 #define ELEM_T uint32_t
 #endif
+
+static bool opt_time = false;
 
 int num_compare(const void *a, const void *b)
 {
@@ -226,6 +230,13 @@ static void qsort_dtor(void *args)
     free(args);
 }
 
+static long long ns_time()
+{
+    struct timespec tt;
+    clock_gettime(CLOCK_MONOTONIC, &tt);
+    return tt.tv_sec * 1e9 + tt.tv_nsec;
+}
+
 int main(int argc, char *argv[])
 {
     int nr_threads = 16;
@@ -234,7 +245,7 @@ int main(int argc, char *argv[])
 
     int ch;
     char *ep;
-    while ((ch = getopt(argc, argv, "f:h:ln:stv")) != -1) {
+    while ((ch = getopt(argc, argv, "h:n:t")) != -1) {
         switch (ch) {
         case 'n':
             nelem = (size_t) strtol(optarg, &ep, 10);
@@ -248,6 +259,9 @@ int main(int argc, char *argv[])
                 warnx("illegal number, -h argument -- %s", optarg);
             }
             break;
+        case 't':
+            opt_time = true;
+            break;
         default:
             break;
         }
@@ -256,6 +270,10 @@ int main(int argc, char *argv[])
     ELEM_T *int_elem = xmalloc(nelem * sizeof(ELEM_T));
     for (size_t i = 0; i < nelem; i++)
         int_elem[i] = rand() % nelem;
+
+    long long start, end;
+
+    start = ns_time();
 
     qsort_common = xmalloc(sizeof(struct common));
     qsort_common->swaptype =
@@ -270,6 +288,8 @@ int main(int argc, char *argv[])
     qsort_spawn(int_elem, nelem);
     hina_exit();
 
+    end = ns_time();
+
     /* Verify the result of sorting */
     for (size_t i = 1; i < nelem; i++) {
         if (num_compare(&int_elem[i], &int_elem[i - 1]) < 0) {
@@ -278,7 +298,9 @@ int main(int argc, char *argv[])
         }
     }
 
-    printf("Done\n");
+    if (opt_time) {
+        printf("%lld\n", end - start);
+    }
 
     free(qsort_common);
     free(int_elem);

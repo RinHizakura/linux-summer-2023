@@ -22,7 +22,7 @@ vpath %.c $(sort $(dir $(CSRCS)))
 all: $(BINARY)
 
 run: $(BINARY)
-	$(BINARY) -n 100000 -h 16
+	$(BINARY) -n 100000 -h 16 -t
 
 $(OUT)/%.o: %.c
 	$(CC) -c $(CFLAGS) $< -o $@
