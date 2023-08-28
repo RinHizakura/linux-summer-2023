@@ -1,7 +1,9 @@
 #include <assert.h>
+#include <err.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include "hina.h"
 
 #ifndef ELEM_T
@@ -224,10 +226,33 @@ static void qsort_dtor(void *args)
     free(args);
 }
 
-int main()
+int main(int argc, char *argv[])
 {
+    int nr_threads = 16;
     size_t nelem = 100000;
     size_t es = sizeof(ELEM_T);
+
+    int ch;
+    char *ep;
+    while ((ch = getopt(argc, argv, "f:h:ln:stv")) != -1) {
+        switch (ch) {
+        case 'n':
+            nelem = (size_t) strtol(optarg, &ep, 10);
+            if (nelem == 0 || *ep != '\0') {
+                warnx("illegal number, -n argument -- %s", optarg);
+            }
+            break;
+        case 'h':
+            nr_threads = (int) strtol(optarg, &ep, 10);
+            if (nr_threads < 0 || *ep != '\0') {
+                warnx("illegal number, -h argument -- %s", optarg);
+            }
+            break;
+        default:
+            break;
+        }
+    }
+
     ELEM_T *int_elem = xmalloc(nelem * sizeof(ELEM_T));
     for (size_t i = 0; i < nelem; i++)
         int_elem[i] = rand() % nelem;
@@ -240,7 +265,7 @@ int main()
     qsort_common->es = es;
     qsort_common->cmp = num_compare;
 
-    hina_init();
+    hina_init(nr_threads);
     hina_run();
     qsort_spawn(int_elem, nelem);
     hina_exit();

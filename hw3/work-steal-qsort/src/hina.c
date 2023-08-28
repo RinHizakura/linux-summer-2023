@@ -5,11 +5,10 @@
 #include <stdlib.h>
 #include "deque.h"
 
-#define N_THREADS 24
-
 typedef struct hina {
-    pthread_t threads[N_THREADS];
-    int tids[N_THREADS];
+    int nr_threads;
+    pthread_t *threads;
+    int *tids;
 
     atomic_size_t active;
     atomic_bool done;
@@ -50,7 +49,7 @@ static void *thread(void *args)
         } else {
             /* Currently, there is no work present in my own queue */
             work_t *stolen = EMPTY;
-            for (int i = 0; i < N_THREADS; ++i) {
+            for (int i = 0; i < hina.nr_threads; ++i) {
                 if (i == id)
                     continue;
                 stolen = deque_steal(&thread_queues[i]);
@@ -75,14 +74,17 @@ static void *thread(void *args)
     return NULL;
 }
 
-void hina_init()
+void hina_init(int nr_threads)
 {
-    thread_queues = malloc(N_THREADS * sizeof(deque_t));
+    hina.nr_threads = nr_threads;
+    hina.tids = calloc(nr_threads, sizeof(int));
+    hina.threads = calloc(nr_threads, sizeof(pthread_t));
+    thread_queues = calloc(nr_threads, sizeof(deque_t));
 
     INIT_LIST_HEAD(&hina.list);
     pthread_mutex_init(&hina.list_lock, NULL);
 
-    for (int i = 0; i < N_THREADS; ++i) {
+    for (int i = 0; i < nr_threads; ++i) {
         deque_init(&thread_queues[i], 8);
         hina.tids[i] = i;
     }
@@ -118,7 +120,7 @@ void hina_spawn(task_t task, dtor_t dtor, void *args)
 
 void hina_run()
 {
-    for (int i = 0; i < N_THREADS; ++i) {
+    for (int i = 0; i < hina.nr_threads; ++i) {
         if (pthread_create(&hina.threads[i], NULL, thread, &hina.tids[i]) !=
             0) {
             perror("Failed to start the thread");
@@ -135,7 +137,7 @@ void hina_exit()
 
     atomic_store(&hina.done, true);
 
-    for (int i = 0; i < N_THREADS; ++i) {
+    for (int i = 0; i < hina.nr_threads; ++i) {
         if (pthread_join(hina.threads[i], NULL) != 0) {
             perror("Failed to join the thread");
             exit(EXIT_FAILURE);
@@ -150,7 +152,7 @@ void hina_exit()
         free(work);
     }
 
-    for (int i = 0; i < N_THREADS; ++i) {
+    for (int i = 0; i < hina.nr_threads; ++i) {
         deque_free(&thread_queues[i]);
     }
     free(thread_queues);
