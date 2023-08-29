@@ -1,7 +1,9 @@
 #include "deque.h"
+#include <assert.h>
 #include <stdlib.h>
+#include "tid.h"
 
-void deque_init(deque_t *q, int size_hint)
+void deque_init(deque_t *q, int size_hint, int nr_threads)
 {
     /* FIXME: These are initialized to one but not zero because
      * the wrapping behavior of unsigned integer may lead to
@@ -11,6 +13,14 @@ void deque_init(deque_t *q, int size_hint)
     array_t *a = malloc(sizeof(array_t) + sizeof(work_t *) * size_hint);
     atomic_init(&a->size, size_hint);
     atomic_init(&q->array, a);
+    atomic_init(&q->old_array, NULL);
+
+    handle_t *h = malloc(sizeof(handle_t) * nr_threads);
+    for (int i = 0; i < nr_threads; i++)
+        h[i].array = a;
+
+    atomic_init(&q->handle, h);
+    atomic_init(&q->nr_threads, nr_threads);
 }
 
 static void deque_resize(deque_t *q)
@@ -31,6 +41,10 @@ static void deque_resize(deque_t *q)
 
     atomic_thread_fence(memory_order_seq_cst);
     atomic_store_explicit(&q->array, new, memory_order_relaxed);
+    /* We assume that when a new array is created, the previous old one
+     * should have been released. */
+    array_t *na = NULL;
+    assert(atomic_compare_exchange_weak(&q->old_array, &na, a));
     /* The question arises as to the appropriate timing for releasing memory
      * associated with the previous array denoted by *a. In the original Chase
      * and Lev paper, this task was undertaken by the garbage collector, which
@@ -45,6 +59,30 @@ static void deque_resize(deque_t *q)
      * this design choice ensures that any leaked memory remains bounded by the
      * memory actively employed by the functional queues.
      */
+}
+
+static void deque_gc(deque_t *q)
+{
+    array_t *a = atomic_load_explicit(&q->array, memory_order_relaxed);
+    atomic_store_explicit(&q->handle[tid].array, a, memory_order_relaxed);
+    atomic_thread_fence(memory_order_seq_cst);
+    array_t *old_a = atomic_load_explicit(&q->old_array, memory_order_relaxed);
+
+    /* Make threads racing for resetting the q->old_array, so we won't
+     * double freeing incorrectly. */
+    if (old_a && atomic_compare_exchange_weak(&q->old_array, &old_a, NULL)) {
+        for (int i = 0; i < q->nr_threads; i++) {
+            array_t *cur =
+                atomic_load_explicit(&q->handle[i].array, memory_order_relaxed);
+            if (cur == old_a) {
+                atomic_store_explicit(&q->old_array, old_a,
+                                      memory_order_relaxed);
+                return;
+            }
+        }
+
+        free(old_a);
+    }
 }
 
 work_t *deque_take(deque_t *q)
@@ -71,6 +109,9 @@ work_t *deque_take(deque_t *q)
     } else { /* Empty queue */
         x = EMPTY;
     }
+
+    deque_gc(q);
+
     return x;
 }
 
@@ -90,6 +131,8 @@ void deque_push(deque_t *q, work_t *w)
         atomic_thread_fence(memory_order_release);
     } while (!atomic_compare_exchange_strong_explicit(
         &q->bottom, &b, b + 1, memory_order_seq_cst, memory_order_relaxed));
+
+    deque_gc(q);
 }
 
 work_t *deque_steal(deque_t *q)
@@ -107,6 +150,9 @@ work_t *deque_steal(deque_t *q)
             /* Failed race */
             x = ABORT;
     }
+
+    deque_gc(q);
+
     return x;
 }
 
@@ -114,7 +160,7 @@ work_t *deque_steal(deque_t *q)
  * assuming no synchronization is required here. */
 void deque_free(deque_t *q)
 {
-    /* FIXME: if resize happened, we should also
-     * take care of those unused array buffer. */
+    free(q->old_array);
     free(q->array);
+    free(q->handle);
 }

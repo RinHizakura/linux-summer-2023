@@ -4,6 +4,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "deque.h"
+#include "tid.h"
+
+__thread int tid = 0;
 
 typedef struct hina {
     int nr_threads;
@@ -31,9 +34,6 @@ static void do_work(work_t *work)
         atomic_fetch_sub_explicit(&hina.active, 1, memory_order_relaxed);
     }
 }
-
-
-static __thread int tid = 0;
 
 static void *thread(void *args)
 {
@@ -85,7 +85,7 @@ void hina_init(int nr_threads)
     pthread_mutex_init(&hina.list_lock, NULL);
 
     for (int i = 0; i < nr_threads; ++i) {
-        deque_init(&thread_queues[i], 8);
+        deque_init(&thread_queues[i], 8, nr_threads);
         hina.tids[i] = i;
     }
 }
@@ -156,4 +156,6 @@ void hina_exit()
         deque_free(&thread_queues[i]);
     }
     free(thread_queues);
+    free(hina.threads);
+    free(hina.tids);
 }
